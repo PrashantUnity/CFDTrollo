@@ -43,6 +43,14 @@
     </button>
 </div>
 
+<!-- Delete Confirmation Modal -->
+<DeleteConfirmationModal IsOpen="@isDeleteModalOpen" 
+                        OnClose="@(() => isDeleteModalOpen = false)" 
+                        OnConfirm="@HandleConfirmDelete"
+                        Title="@deleteModalTitle"
+                        Message="@deleteModalMessage"
+                        Details="@deleteModalDetails" />
+
 @code {
     [Parameter] public string WorkspaceId { get; set; } = "default";
     [Parameter] public EventCallback<int> OnCardCountChanged { get; set; }
@@ -50,6 +58,14 @@
     private BoardState boardState = new();
     private DotNetObjectReference<Board>? dotNetReference;
     private ElementReference boardListsElement;
+    
+    // Delete modal state
+    private bool isDeleteModalOpen = false;
+    private string deleteModalTitle = string.Empty;
+    private string deleteModalMessage = string.Empty;
+    private string deleteModalDetails = string.Empty;
+    private string? pendingDeleteListId = null;
+    private string? pendingDeleteCardId = null;
 
     protected override async Task OnInitializedAsync()
     {
@@ -148,24 +164,58 @@
         _ = SaveBoardState();
     }
 
-    private async Task HandleDeleteList(string listId)
+    private void HandleDeleteList(string listId)
     {
         var list = boardState.Lists.FirstOrDefault(l => l.Id == listId);
         if (list == null) return;
 
-        // Show confirmation dialog
-        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", 
-            $"Are you sure you want to delete the list '{list.Title}'? This will also delete all {list.Cards.Count} cards in this list.");
-
-        if (confirmed)
-        {
-            boardState.Lists.Remove(list);
-            StateHasChanged();
-            await SaveBoardState();
-        }
+        // Set up modal content
+        pendingDeleteListId = listId;
+        deleteModalTitle = "Delete List";
+        deleteModalMessage = $"Are you sure you want to delete the list '{list.Title}'?";
+        deleteModalDetails = $"This will permanently delete the list and all {list.Cards.Count} cards in it. This action cannot be undone.";
+        
+        // Show modal
+        isDeleteModalOpen = true;
+        StateHasChanged();
     }
 
-    private async Task HandleDeleteCard(string cardId)
+    private async Task HandleConfirmDelete()
+    {
+        if (pendingDeleteListId != null)
+        {
+            // Delete list
+            var list = boardState.Lists.FirstOrDefault(l => l.Id == pendingDeleteListId);
+            if (list != null)
+            {
+                boardState.Lists.Remove(list);
+                StateHasChanged();
+                await SaveBoardState();
+            }
+            pendingDeleteListId = null;
+        }
+        else if (pendingDeleteCardId != null)
+        {
+            // Delete card
+            foreach (var list in boardState.Lists)
+            {
+                var card = list.Cards.FirstOrDefault(c => c.Id == pendingDeleteCardId);
+                if (card != null)
+                {
+                    list.Cards.Remove(card);
+                    break;
+                }
+            }
+            StateHasChanged();
+            await SaveBoardState();
+            pendingDeleteCardId = null;
+        }
+
+        // Reset modal state
+        isDeleteModalOpen = false;
+    }
+
+    private void HandleDeleteCard(string cardId)
     {
         // Find the card in all lists
         Card? cardToDelete = null;
@@ -184,16 +234,15 @@
 
         if (cardToDelete == null || parentList == null) return;
 
-        // Show confirmation dialog
-        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", 
-            $"Are you sure you want to delete the card '{cardToDelete.Title}'?");
-
-        if (confirmed)
-        {
-            parentList.Cards.Remove(cardToDelete);
-            StateHasChanged();
-            await SaveBoardState();
-        }
+        // Set up modal content
+        pendingDeleteCardId = cardId;
+        deleteModalTitle = "Delete Card";
+        deleteModalMessage = $"Are you sure you want to delete the card '{cardToDelete.Title}'?";
+        deleteModalDetails = $"This will permanently delete the card from the '{parentList.Title}' list. This action cannot be undone.";
+        
+        // Show modal
+        isDeleteModalOpen = true;
+        StateHasChanged();
     }
 
     [JSInvokable]
@@ -306,7 +355,10 @@
                 await JSRuntime.InvokeVoidAsync("eval", "if (typeof window.testDragDrop === 'function') { window.testDragDrop(); } else { console.log('❌ testDragDrop function not found'); }");
                 
                 // Test initialization
-                await DragDropService.InitializeDragDropAsync(dotNetReference);
+                if (dotNetReference != null)
+                {
+                    await DragDropService.InitializeDragDropAsync(dotNetReference);
+                }
                 Console.WriteLine("✅ Drag drop test completed successfully");
                 
                 // Test enabling drag on first card

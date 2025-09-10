@@ -159,7 +159,7 @@
                                         <div class="grid grid-cols-2 gap-3">
                                             @foreach (var color in cardBackgroundColors)
                                             {
-                                                <button @onclick="@(() => HandleBackgroundColorChange(color.Value))"
+                                                <button @onclick="@(() => HandleBackgroundColorChange(color.Value ?? string.Empty))"
                                                         class="p-3 rounded-lg border-2 transition-all @(editedCard.BackgroundColor == color.Value ? "border-primary ring-2 ring-primary/20" : "border-transparent hover:border-muted")">
                                                     <div class="w-full h-8 rounded @(color.Value ?? "bg-card border border-border")"></div>
                                                     <span class="text-xs text-muted-foreground mt-2 block text-center">@color.Name</span>
