@@ -137,13 +137,13 @@ else
         if (workspace == null)
         {
             // Workspace not found, redirect to home
-            Navigation.NavigateTo("/");
+            Navigation.NavigateTo("");
         }
     }
 
     private void NavigateToHome()
     {
-        Navigation.NavigateTo("/");
+        Navigation.NavigateTo("");
     }
 
     private async Task UpdateCardCount(int cardCount)
@@ -179,7 +179,7 @@ else
         if (workspace != null)
         {
             await WorkspaceService.DeleteWorkspaceAsync(workspace.Id);
-            Navigation.NavigateTo("/");
+            Navigation.NavigateTo("");
         }
     }
 }
