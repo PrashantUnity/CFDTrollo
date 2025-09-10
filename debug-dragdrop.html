@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Drag Drop Debug</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-card {
+            width: 200px;
+            height: 100px;
+            background: #f0f0f0;
+            border: 2px solid #ccc;
+            margin: 10px;
+            padding: 10px;
+            cursor: grab;
+            display: inline-block;
+        }
+        .test-card:active {
+            cursor: grabbing;
+        }
+        .test-drop-zone {
+            width: 300px;
+            height: 200px;
+            background: #e0e0e0;
+            border: 2px dashed #999;
+            margin: 10px;
+            padding: 10px;
+            display: inline-block;
+        }
+        .drag-over {
+            background: #d0d0ff !important;
+        }
+        .log {
+            background: #f5f5f5;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 10px 0;
+            height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>Drag Drop Debug Test</h1>
+    
+    <div class="test-card" draggable="true" id="card1">
+        Test Card 1
+    </div>
+    
+    <div class="test-card" draggable="true" id="card2">
+        Test Card 2
+    </div>
+    
+    <div class="test-drop-zone" id="dropZone1">
+        Drop Zone 1
+    </div>
+    
+    <div class="test-drop-zone" id="dropZone2">
+        Drop Zone 2
+    </div>
+    
+    <div class="log" id="log"></div>
+    
+    <button onclick="testDragDrop()">Test Drag Drop</button>
+    <button onclick="clearLog()">Clear Log</button>
+    
+    <script src="js/dragdrop.js"></script>
+    <script>
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            logDiv.innerHTML += '<div>' + new Date().toLocaleTimeString() + ': ' + message + '</div>';
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+        
+        function testDragDrop() {
+            log('🧪 Testing drag drop...');
+            
+            // Test if dragDrop is loaded
+            if (typeof window.dragDrop !== 'undefined') {
+                log('✅ dragDrop loaded');
+                
+                // Test initialization
+                try {
+                    window.dragDrop.init({
+                        invokeMethodAsync: function(method, ...args) {
+                            log('Method called: ' + method + ' Args: ' + JSON.stringify(args));
+                        }
+                    });
+                    log('✅ dragDrop initialized');
+                } catch (e) {
+                    log('❌ Error initializing dragDrop: ' + e.message);
+                }
+                
+                // Test enabling dragging
+                try {
+                    const card1 = document.getElementById('card1');
+                    const card2 = document.getElementById('card2');
+                    const dropZone1 = document.getElementById('dropZone1');
+                    const dropZone2 = document.getElementById('dropZone2');
+                    
+                    window.dragDrop.enableDraggable(card1, 'card', 'test-card-1', 'Test List', 0);
+                    window.dragDrop.enableDraggable(card2, 'card', 'test-card-2', 'Test List', 1);
+                    window.dragDrop.enableDropZone(dropZone1, 'card', 'test-drop-zone-1');
+                    window.dragDrop.enableDropZone(dropZone2, 'card', 'test-drop-zone-2');
+                    
+                    log('✅ Drag drop setup complete');
+                } catch (e) {
+                    log('❌ Error setting up drag drop: ' + e.message);
+                }
+                
+            } else {
+                log('❌ dragDrop not loaded');
+            }
+        }
+        
+        // Auto-test when loaded
+        window.addEventListener('load', function() {
+            setTimeout(testDragDrop, 1000);
+        });
+    </script>
+</body>
+</html>

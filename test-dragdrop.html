@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Drag Drop Test</title>
+    <style>
+        .test-card {
+            width: 200px;
+            height: 100px;
+            background: #f0f0f0;
+            border: 2px solid #ccc;
+            margin: 10px;
+            padding: 10px;
+            cursor: grab;
+        }
+        .test-card:active {
+            cursor: grabbing;
+        }
+        .test-drop-zone {
+            width: 300px;
+            height: 200px;
+            background: #e0e0e0;
+            border: 2px dashed #999;
+            margin: 10px;
+            padding: 10px;
+        }
+        .drag-over {
+            background: #d0d0ff !important;
+        }
+    </style>
+</head>
+<body>
+    <h1>Drag Drop Test</h1>
+    
+    <div class="test-card" draggable="true" id="card1">
+        Drag me!
+    </div>
+    
+    <div class="test-drop-zone" id="dropZone">
+        Drop here!
+    </div>
+    
+    <div id="log"></div>
+    
+    <script src="js/dragdrop.js"></script>
+    <script>
+        console.log('Testing drag drop...');
+        
+        // Test if dragDrop is loaded
+        if (typeof window.dragDrop !== 'undefined') {
+            console.log('✅ dragDrop loaded');
+            
+            // Initialize drag drop
+            window.dragDrop.init({
+                invokeMethodAsync: function(method, ...args) {
+                    console.log('Method called:', method, args);
+                    document.getElementById('log').innerHTML += '<br>Method: ' + method + ' Args: ' + JSON.stringify(args);
+                }
+            });
+            
+            // Enable dragging on the card
+            const card = document.getElementById('card1');
+            const dropZone = document.getElementById('dropZone');
+            
+            window.dragDrop.enableDraggable(card, 'card', 'test-card-1', 'Test List', 0);
+            window.dragDrop.enableDropZone(dropZone, 'card', 'test-drop-zone');
+            
+            console.log('✅ Drag drop test setup complete');
+        } else {
+            console.log('❌ dragDrop not loaded');
+        }
+    </script>
+</body>
+</html>
