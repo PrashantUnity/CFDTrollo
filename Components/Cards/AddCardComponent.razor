@@ -34,7 +34,8 @@ else
 }
 
 @code {
-    [Parameter] public EventCallback<string> OnAddCard { get; set; }
+    [Parameter] public EventCallback<(string listId, string title)> OnAddCard { get; set; }
+    [Parameter] public string ListId { get; set; } = string.Empty;
 
     private bool isAdding = false;
     private string title = string.Empty;
@@ -52,7 +53,7 @@ else
     {
         if (!string.IsNullOrWhiteSpace(title))
         {
-            await OnAddCard.InvokeAsync(title.Trim());
+            await OnAddCard.InvokeAsync((ListId, title.Trim()));
             title = string.Empty;
             isAdding = false;
         }

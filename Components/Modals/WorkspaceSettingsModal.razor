@@ -1,0 +1,98 @@
+@using CFDTrollo.Models
+@using CFDTrollo.Components.UI
+
+@if (IsOpen)
+{
+    <BaseModal OnClose="OnClose">
+        <div class="p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-semibold text-foreground">Workspace Settings</h2>
+                <button @onclick="OnClose"
+                        class="p-2 hover:bg-muted rounded-lg transition-colors">
+                    <svg class="w-6 h-6 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            @if (Workspace != null)
+            {
+                <div class="space-y-6">
+                    <!-- Workspace Info -->
+                    <div class="flex items-center gap-4 p-4 bg-muted/30 rounded-lg">
+                        <div class="w-12 h-12 rounded-lg flex items-center justify-center" 
+                             style="background-color: @Workspace.Color">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-foreground">@Workspace.Name</h3>
+                            <p class="text-sm text-muted-foreground">@Workspace.CardCount cards • @Workspace.Lists.Count lists</p>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="space-y-3">
+                        <button @onclick="ShowEditModal"
+                                class="w-full flex items-center gap-3 p-4 text-left hover:bg-muted/50 rounded-lg transition-colors">
+                            <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                                <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="font-medium text-foreground">Edit Workspace</h4>
+                                <p class="text-sm text-muted-foreground">Change name, description, and color</p>
+                            </div>
+                        </button>
+
+                        <button @onclick="ShowDeleteModal"
+                                class="w-full flex items-center gap-3 p-4 text-left hover:bg-destructive/10 rounded-lg transition-colors">
+                            <div class="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center">
+                                <svg class="w-5 h-5 text-destructive" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="font-medium text-destructive">Delete Workspace</h4>
+                                <p class="text-sm text-muted-foreground">Permanently remove this workspace and all its data</p>
+                            </div>
+                        </button>
+                    </div>
+
+                    <!-- Workspace Details -->
+                    <div class="pt-4 border-t border-border">
+                        <h4 class="font-medium text-foreground mb-3">Workspace Details</h4>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-muted-foreground">Created:</span>
+                                <span class="text-foreground">@Workspace.CreatedAt.ToString("MMM dd, yyyy")</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-muted-foreground">Last Modified:</span>
+                                <span class="text-foreground">@Workspace.LastModified.ToString("MMM dd, yyyy")</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-muted-foreground">Workspace ID:</span>
+                                <span class="text-foreground font-mono text-xs">@Workspace.Id</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </BaseModal>
+}
+
+<!-- Edit Workspace Modal -->
+<EditWorkspaceModal IsOpen="showEditModal" 
+                    OnClose="HideEditModal" 
+                    OnUpdateWorkspace="HandleUpdateWorkspace"
+                    Workspace="Workspace" />
+
+<!-- Delete Workspace Modal -->
+<DeleteWorkspaceModal IsOpen="showDeleteModal" 
+                      OnClose="HideDeleteModal" 
+                      OnDeleteWorkspace="HandleDeleteWorkspace"
+                      Workspace="Workspace" />

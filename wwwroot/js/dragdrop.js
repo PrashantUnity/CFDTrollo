@@ -30,8 +30,19 @@ window.dragDrop = {
             chosenClass: 'sortable-chosen',
             dragClass: 'sortable-drag',
             handle: '.card-drag-handle',
+            forceFallback: false,
+            fallbackOnBody: true,
+            swapThreshold: 0.65,
+            invertSwap: false,
+            direction: 'vertical',
+            preventOnFilter: true,
+            filter: '.no-drag, button, input, textarea, select, a',
             onStart: (evt) => {
                 console.log('🚀 Card drag start:', evt.item.dataset.cardId);
+                // Prevent text selection during drag
+                document.body.style.userSelect = 'none';
+                // Add a class to prevent other interactions
+                evt.item.classList.add('dragging');
             },
             onEnd: (evt) => {
                 console.log('🏁 Card drag end:', {
@@ -41,6 +52,11 @@ window.dragDrop = {
                     newIndex: evt.newIndex,
                     oldIndex: evt.oldIndex
                 });
+
+                // Restore text selection
+                document.body.style.userSelect = '';
+                // Remove dragging class
+                evt.item.classList.remove('dragging');
 
                 // Call C# method to handle the drop
                 if (evt.from !== evt.to) {
@@ -82,8 +98,19 @@ window.dragDrop = {
             chosenClass: 'sortable-chosen',
             dragClass: 'sortable-drag',
             handle: '.list-drag-handle',
+            forceFallback: false,
+            fallbackOnBody: true,
+            swapThreshold: 0.65,
+            invertSwap: false,
+            direction: 'horizontal',
+            preventOnFilter: true,
+            filter: '.no-drag, button, input, textarea, select, a',
             onStart: (evt) => {
                 console.log('🚀 List drag start:', evt.item.dataset.listId);
+                // Prevent text selection during drag
+                document.body.style.userSelect = 'none';
+                // Add a class to prevent other interactions
+                evt.item.classList.add('dragging');
             },
             onEnd: (evt) => {
                 console.log('🏁 List drag end:', {
@@ -91,6 +118,11 @@ window.dragDrop = {
                     newIndex: evt.newIndex,
                     oldIndex: evt.oldIndex
                 });
+
+                // Restore text selection
+                document.body.style.userSelect = '';
+                // Remove dragging class
+                evt.item.classList.remove('dragging');
 
                 // Call C# method to handle the reorder
                 this.dotNetReference.invokeMethodAsync('HandleListReorder', 
@@ -145,6 +177,10 @@ window.dragDrop = {
             
             .card-drag-handle {
                 cursor: grab;
+                user-select: none;
+                -webkit-user-select: none;
+                -moz-user-select: none;
+                -ms-user-select: none;
             }
             
             .card-drag-handle:active {
@@ -153,10 +189,47 @@ window.dragDrop = {
             
             .list-drag-handle {
                 cursor: grab;
+                user-select: none;
+                -webkit-user-select: none;
+                -moz-user-select: none;
+                -ms-user-select: none;
             }
             
             .list-drag-handle:active {
                 cursor: grabbing;
+            }
+            
+            .dragging {
+                pointer-events: none;
+                user-select: none;
+                -webkit-user-select: none;
+                -moz-user-select: none;
+                -ms-user-select: none;
+            }
+            
+            .dragging * {
+                pointer-events: none;
+                user-select: none;
+                -webkit-user-select: none;
+                -moz-user-select: none;
+                -ms-user-select: none;
+            }
+            
+            /* Prevent text selection during drag operations */
+            .sortable-container {
+                user-select: none;
+                -webkit-user-select: none;
+                -moz-user-select: none;
+                -ms-user-select: none;
+            }
+            
+            /* Ensure buttons and interactive elements don't interfere with drag */
+            .no-drag {
+                pointer-events: auto;
+                user-select: auto;
+                -webkit-user-select: auto;
+                -moz-user-select: auto;
+                -ms-user-select: auto;
             }
         `;
         document.head.appendChild(style);

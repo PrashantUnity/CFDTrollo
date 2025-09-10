@@ -1,89 +1,70 @@
 using Microsoft.JSInterop;
 using Microsoft.AspNetCore.Components;
+using CFDTrollo.Interfaces;
+using CFDTrollo.Common;
+using CFDTrollo.Constants;
 
 namespace CFDTrollo.Services;
 
-public class DragDropService
+/// <summary>
+/// Drag and drop service implementation
+/// </summary>
+public class DragDropService : BaseService, IDragDropService
 {
     private readonly IJSRuntime _jsRuntime;
 
-    public DragDropService(IJSRuntime jsRuntime)
+    public DragDropService(IJSRuntime jsRuntime, ILoggerService logger) : base(logger)
     {
-        _jsRuntime = jsRuntime;
+        _jsRuntime = jsRuntime ?? throw new ArgumentNullException(nameof(jsRuntime));
     }
 
     public async Task InitializeDragDropAsync<T>(DotNetObjectReference<T> dotNetReference) where T : class
     {
-        try
+        await ExecuteWithErrorHandlingAsync(async () =>
         {
-            Console.WriteLine("🔧 Initializing DragDrop with SortableJS...");
+            Logger.LogInformation("Initializing DragDrop with SortableJS...");
             await _jsRuntime.InvokeVoidAsync("dragDrop.init", dotNetReference);
-            Console.WriteLine("✅ DragDrop initialized successfully");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ Error initializing DragDrop: {ex.Message}");
-            throw;
-        }
+            Logger.LogInformation("DragDrop initialized successfully");
+        }, "InitializeDragDropAsync");
     }
 
     public async Task EnableCardDraggingAsync(ElementReference listElement, string listId)
     {
-        try
+        await ExecuteWithErrorHandlingAsync(async () =>
         {
-            Console.WriteLine($"🔧 Enabling card dragging for list: {listId}");
+            Logger.LogInformation($"Enabling card dragging for list: {listId}");
             await _jsRuntime.InvokeVoidAsync("dragDrop.enableCardDragging", listElement, listId);
-            Console.WriteLine($"✅ Card dragging enabled for list: {listId}");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ Error enabling card dragging for list {listId}: {ex.Message}");
-            throw;
-        }
+            Logger.LogInformation($"Card dragging enabled for list: {listId}");
+        }, $"EnableCardDraggingAsync for list {listId}");
     }
 
     public async Task EnableListDraggingAsync(ElementReference boardElement)
     {
-        try
+        await ExecuteWithErrorHandlingAsync(async () =>
         {
-            Console.WriteLine("🔧 Enabling list dragging for board");
+            Logger.LogInformation("Enabling list dragging for board");
             await _jsRuntime.InvokeVoidAsync("dragDrop.enableListDragging", boardElement);
-            Console.WriteLine("✅ List dragging enabled for board");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ Error enabling list dragging: {ex.Message}");
-            throw;
-        }
+            Logger.LogInformation("List dragging enabled for board");
+        }, "EnableListDraggingAsync");
     }
 
     public async Task DestroySortableAsync(string elementId)
     {
-        try
+        await ExecuteWithErrorHandlingAsync(async () =>
         {
-            Console.WriteLine($"🔧 Destroying sortable instance: {elementId}");
+            Logger.LogInformation($"Destroying sortable instance: {elementId}");
             await _jsRuntime.InvokeVoidAsync("dragDrop.destroy", elementId);
-            Console.WriteLine($"✅ Sortable instance destroyed: {elementId}");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ Error destroying sortable instance {elementId}: {ex.Message}");
-            throw;
-        }
+            Logger.LogInformation($"Sortable instance destroyed: {elementId}");
+        }, $"DestroySortableAsync for element {elementId}");
     }
 
     public async Task DestroyAllSortablesAsync()
     {
-        try
+        await ExecuteWithErrorHandlingAsync(async () =>
         {
-            Console.WriteLine("🔧 Destroying all sortable instances");
+            Logger.LogInformation("Destroying all sortable instances");
             await _jsRuntime.InvokeVoidAsync("dragDrop.destroyAll");
-            Console.WriteLine("✅ All sortable instances destroyed");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"❌ Error destroying all sortable instances: {ex.Message}");
-            throw;
-        }
+            Logger.LogInformation("All sortable instances destroyed");
+        }, "DestroyAllSortablesAsync");
     }
 }

@@ -1,0 +1,75 @@
+@using CFDTrollo.Models
+@using CFDTrollo.Components.UI
+
+@if (IsOpen)
+{
+    <BaseModal OnClose="OnClose">
+        <div class="p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-semibold text-foreground">Delete Workspace</h2>
+                <button @onclick="OnClose"
+                        class="p-2 hover:bg-muted rounded-lg transition-colors">
+                    <svg class="w-6 h-6 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                <div class="flex items-center gap-3 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                    <div class="w-12 h-12 rounded-lg flex items-center justify-center bg-destructive/20">
+                        <svg class="w-6 h-6 text-destructive" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-foreground">Warning</h3>
+                        <p class="text-sm text-muted-foreground">This action cannot be undone.</p>
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <p class="text-foreground">
+                        Are you sure you want to delete the workspace 
+                        <span class="font-semibold">"@Workspace?.Name"</span>?
+                    </p>
+                    
+                    @if (Workspace != null && Workspace.CardCount > 0)
+                    {
+                        <div class="p-3 bg-muted/50 rounded-lg">
+                            <p class="text-sm text-muted-foreground">
+                                This workspace contains <span class="font-semibold">@Workspace.CardCount cards</span> 
+                                across <span class="font-semibold">@Workspace.Lists.Count lists</span>. 
+                                All of this data will be permanently deleted.
+                            </p>
+                        </div>
+                    }
+                    
+                    <div class="p-3 bg-muted/50 rounded-lg">
+                        <p class="text-sm text-muted-foreground">
+                            <strong>What will be deleted:</strong>
+                        </p>
+                        <ul class="text-sm text-muted-foreground mt-1 ml-4 list-disc">
+                            <li>All cards in this workspace</li>
+                            <li>All lists in this workspace</li>
+                            <li>Workspace settings and configuration</li>
+                            <li>All associated data and history</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3 mt-8">
+                <button @onclick="OnClose"
+                        class="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors">
+                    Cancel
+                </button>
+                <button @onclick="HandleDeleteWorkspace"
+                        class="px-6 py-2 bg-destructive text-destructive-foreground rounded-lg hover:opacity-90 transition-all font-medium shadow-sm hover:shadow-md">
+                    Delete Workspace
+                </button>
+            </div>
+        </div>
+    </BaseModal>
+}
+

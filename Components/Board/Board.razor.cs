@@ -1,59 +1,19 @@
-@using CFDTrollo.Models
-@using CFDTrollo.Data
-@using CFDTrollo.Services
-@inject LocalStorageService LocalStorage
-@inject IJSRuntime JSRuntime
-@inject DragDropService DragDropService
-@implements IDisposable
+using CFDTrollo.Data;
+using CFDTrollo.Models;
+using CFDTrollo.Interfaces;
+using Microsoft.AspNetCore.Components;
+using Microsoft.JSInterop;
 
-<div class="min-h-screen bg-board">
-    <main class="p-6 md:p-8 overflow-x-auto">
-        <div id="board-lists" class="board-container flex gap-4 md:gap-6 items-start min-h-[200px] pb-4 w-max" @ref="boardListsElement" data-board-id="main-board">
-            @foreach (var (list, index) in boardState.Lists.Select((list, index) => (list, index)))
-            {
-                <ListComponent List="@list" 
-                               Index="@index" 
-                               OnAddCard="@((title) => HandleAddCard(list.Id, title))" 
-                               OnUpdateCard="@HandleUpdateCard"
-                               OnDeleteList="@(() => HandleDeleteList(list.Id))"
-                               OnDeleteCard="@HandleDeleteCard" />
-            }
-        </div>
-    </main>
-    
-    <!-- Horizontal line at bottom -->
-    <div class="border-t border-border/50 mx-4"></div>
+namespace CFDTrollo.Components.Board;
 
-    <!-- Floating Add List Button - Bottom Right -->
-    <button @onclick="HandleQuickAddList"
-            class="fixed bottom-6 right-6 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full p-4 shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center w-14 h-14 z-50"
-            title="Add New List">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-        </svg>
-    </button>
-    
-    <!-- Test Button -->
-    <button @onclick="TestDragDrop"
-            class="fixed bottom-6 right-24 bg-green-600 hover:bg-green-700 text-white rounded-full p-4 shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center w-14 h-14 z-50"
-            title="Test Drag Drop">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-        </svg>
-    </button>
-</div>
-
-<!-- Delete Confirmation Modal -->
-<DeleteConfirmationModal IsOpen="@isDeleteModalOpen" 
-                        OnClose="@(() => isDeleteModalOpen = false)" 
-                        OnConfirm="@HandleConfirmDelete"
-                        Title="@deleteModalTitle"
-                        Message="@deleteModalMessage"
-                        Details="@deleteModalDetails" />
-
-@code {
+public partial class Board : IDisposable
+{
     [Parameter] public string WorkspaceId { get; set; } = "default";
     [Parameter] public EventCallback<int> OnCardCountChanged { get; set; }
+
+    [Inject] public ILocalStorageService LocalStorage { get; set; } = default!;
+    [Inject] public IDragDropService DragDropService { get; set; } = default!;
+    [Inject] public IJSRuntime JSRuntime { get; set; } = default!;
 
     private BoardState boardState = new();
     private DotNetObjectReference<Board>? dotNetReference;
@@ -66,6 +26,9 @@
     private string deleteModalDetails = string.Empty;
     private string? pendingDeleteListId = null;
     private string? pendingDeleteCardId = null;
+    
+    // Debug state
+    private bool showDebugInfo = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -86,7 +49,7 @@
     private async Task LoadBoardState()
     {
         var storageKey = GetStorageKey(WorkspaceId);
-        var savedState = await LocalStorage.GetItem<BoardState>(storageKey);
+        var savedState = await LocalStorage.GetItemAsync<BoardState>(storageKey);
         
         if (savedState != null && savedState.Lists.Any())
         {
@@ -105,7 +68,7 @@
         if (boardState.Lists.Any())
         {
             var storageKey = GetStorageKey(WorkspaceId);
-            await LocalStorage.SetItem(storageKey, boardState);
+            await LocalStorage.SetItemAsync(storageKey, boardState);
             await NotifyCardCountChanged();
             Console.WriteLine($"Board state saved to localStorage with key: {storageKey}");
         }
@@ -119,15 +82,15 @@
 
     private string GetStorageKey(string workspaceId) => $"project-board-state-{workspaceId}";
 
-    private void HandleAddCard(string listId, string title)
+    private void HandleAddCard((string listId, string title) cardData)
     {
-        var list = boardState.Lists.FirstOrDefault(l => l.Id == listId);
+        var list = boardState.Lists.FirstOrDefault(l => l.Id == cardData.listId);
         if (list != null)
         {
             var newCard = new Card
             {
                 Id = $"card-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}",
-                Title = title
+                Title = cardData.title
             };
             list.Cards.Add(newCard);
             StateHasChanged();
@@ -333,6 +296,12 @@
         {
             Console.WriteLine($"Error handling list reorder: {ex.Message}");
         }
+    }
+
+    private void ToggleDebugInfo()
+    {
+        showDebugInfo = !showDebugInfo;
+        StateHasChanged();
     }
 
     private async Task TestDragDrop()

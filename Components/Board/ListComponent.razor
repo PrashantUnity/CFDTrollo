@@ -1,11 +1,16 @@
 @using CFDTrollo.Models
-@using CFDTrollo.Services
-@inject DragDropService DragDropService
+@using CFDTrollo.Components.Cards
+@using CFDTrollo.Interfaces
+@inject IDragDropService DragDropService
 @inject IJSRuntime JSRuntime
 
-    <div class="list-component bg-list rounded-lg p-3 w-72 flex-shrink-0 max-h-[calc(100vh-8rem)] flex flex-col border border-border shadow-card transition-all group" 
-     data-list-id="@List.Id"
-     @ref="listElement">
+    <div id="list-@List.Id" 
+         class="list-component bg-list rounded-lg p-3 w-72 flex-shrink-0 max-h-[calc(100vh-8rem)] flex flex-col border border-border shadow-card transition-all group" 
+         data-list-id="@List.Id"
+         data-list-index="@Index"
+         @ref="listElement"
+         role="region"
+         aria-label="List @(Index + 1): @List.Title with @List.Cards.Count cards">
     <div class="flex items-center justify-between mb-2">
         @if (isEditingTitle)
         {
@@ -18,7 +23,13 @@
         else
         {
         <div class="font-semibold text-foreground px-2 py-1 select-none flex-1 list-drag-handle">
-            @List.Title
+            <div class="flex items-center gap-2">
+                <span class="text-xs font-bold text-green-600 bg-green-100 px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                    @(Index + 1)
+                </span>
+                <span>@List.Title</span>
+                <span class="text-xs text-muted-foreground">(@List.Cards.Count)</span>
+            </div>
         </div>
         }
         <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -40,7 +51,7 @@
     </div>
     
     <div id="@($"list-{List.Id}")" 
-         class="flex-1 min-h-[100px] max-h-[calc(100vh-12rem)] overflow-y-auto rounded-md transition-colors bg-transparent"
+         class="flex-1 min-h-[100px] max-h-[calc(100vh-12rem)] overflow-y-auto rounded-md transition-colors bg-transparent sortable-container"
          @ref="cardDropZone"
          data-list-id="@List.Id">
         @foreach (var (card, index) in List.Cards.Select((card, index) => (card, index)))
@@ -53,13 +64,13 @@
         }
     </div>
     
-    <AddCardComponent OnAddCard="@OnAddCard" />
+    <AddCardComponent ListId="@List.Id" OnAddCard="@OnAddCard" />
 </div>
 
 @code {
     [Parameter] public List List { get; set; } = new();
     [Parameter] public int Index { get; set; }
-    [Parameter] public EventCallback<string> OnAddCard { get; set; }
+    [Parameter] public EventCallback<(string listId, string title)> OnAddCard { get; set; }
     [Parameter] public EventCallback<Card> OnUpdateCard { get; set; }
     [Parameter] public EventCallback OnDeleteList { get; set; }
     [Parameter] public EventCallback<string> OnDeleteCard { get; set; }

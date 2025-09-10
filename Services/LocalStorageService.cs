@@ -1,53 +1,103 @@
 using Microsoft.JSInterop;
 using System.Text.Json;
-using CFDTrollo.Models;
+using CFDTrollo.Interfaces;
+using CFDTrollo.Common;
+using CFDTrollo.Constants;
 
 namespace CFDTrollo.Services;
 
-public class LocalStorageService
+/// <summary>
+/// Local storage service implementation
+/// </summary>
+public class LocalStorageService : BaseService, ILocalStorageService
 {
     private readonly IJSRuntime _jsRuntime;
 
-    public LocalStorageService(IJSRuntime jsRuntime)
+    public LocalStorageService(IJSRuntime jsRuntime, ILoggerService logger) : base(logger)
     {
-        _jsRuntime = jsRuntime;
+        _jsRuntime = jsRuntime ?? throw new ArgumentNullException(nameof(jsRuntime));
     }
 
-    public async Task<T?> GetItem<T>(string key)
+    public async Task<T?> GetItemAsync<T>(string key)
     {
-        try
+        return await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var json = await _jsRuntime.InvokeAsync<string>("localStorage.getItem", key);
-            return json == null ? default : JsonSerializer.Deserialize<T>(json);
-        }
-        catch
-        {
-            return default;
-        }
+            try
+            {
+                var json = await _jsRuntime.InvokeAsync<string>("localStorage.getItem", key);
+                return json == null ? default : JsonSerializer.Deserialize<T>(json);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Failed to get item from localStorage with key: {key}", ex);
+                return default;
+            }
+        }, $"GetItemAsync<{typeof(T).Name}>", default(T));
     }
 
-    public async Task SetItem<T>(string key, T value)
+    public async Task SetItemAsync<T>(string key, T value)
     {
-        try
+        await ExecuteWithErrorHandlingAsync(async () =>
         {
-            var json = JsonSerializer.Serialize(value);
-            await _jsRuntime.InvokeVoidAsync("localStorage.setItem", key, json);
-        }
-        catch
-        {
-            // Handle error silently
-        }
+            try
+            {
+                var json = JsonSerializer.Serialize(value);
+                await _jsRuntime.InvokeVoidAsync("localStorage.setItem", key, json);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Failed to set item in localStorage with key: {key}", ex);
+                throw;
+            }
+        }, $"SetItemAsync<{typeof(T).Name}>");
     }
 
-    public async Task RemoveItem(string key)
+    public async Task RemoveItemAsync(string key)
     {
-        try
+        await ExecuteWithErrorHandlingAsync(async () =>
         {
-            await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", key);
-        }
-        catch
+            try
+            {
+                await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", key);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Failed to remove item from localStorage with key: {key}", ex);
+                throw;
+            }
+        }, "RemoveItemAsync");
+    }
+
+    public async Task ClearAsync()
+    {
+        await ExecuteWithErrorHandlingAsync(async () =>
         {
-            // Handle error silently
-        }
+            try
+            {
+                await _jsRuntime.InvokeVoidAsync("localStorage.clear");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Failed to clear localStorage", ex);
+                throw;
+            }
+        }, "ClearAsync");
+    }
+
+    public async Task<bool> ContainsKeyAsync(string key)
+    {
+        return await ExecuteWithErrorHandlingAsync(async () =>
+        {
+            try
+            {
+                var result = await _jsRuntime.InvokeAsync<string>("localStorage.getItem", key);
+                return result != null;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Failed to check if key exists in localStorage: {key}", ex);
+                return false;
+            }
+        }, "ContainsKeyAsync", false);
     }
 }
