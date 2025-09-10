@@ -1,0 +1,154 @@
+@using CFDTrollo.Models
+
+<div class="card-component rounded-lg mb-2 shadow-card transition-all duration-200 hover:shadow-hover group @(Card.BackgroundColor ?? "bg-card") @(Card.IsComplete ? "opacity-75" : "")"
+     data-card-id="@Card.Id">
+    
+    <!-- Drag Handle -->
+    <div class="flex items-center justify-between p-3 pb-2 cursor-grab active:cursor-grabbing">
+        <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <svg class="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
+            </svg>
+            <span class="text-xs text-muted-foreground font-medium">Drag to move</span>
+        </div>
+        <button @onclick="@(() => isModalOpen = true)"
+                class="text-xs text-muted-foreground hover:text-foreground transition-colors">
+            Edit
+        </button>
+    </div>
+
+    <!-- Card Content -->
+    <div @onclick="@(() => isModalOpen = true)" class="px-3 pb-3 cursor-pointer">
+        <!-- Image preview -->
+        @if (!string.IsNullOrEmpty(Card.ImageUrl))
+        {
+            <div class="mb-2 overflow-hidden rounded-md border border-border">
+                <img src="@Card.ImageUrl" 
+                     alt="Card preview" 
+                     class="w-full aspect-video object-cover"
+                     onerror="this.style.display='none'" />
+            </div>
+        }
+
+        <!-- Link preview (from first URL found) -->
+        @if (string.IsNullOrEmpty(Card.ImageUrl) && !string.IsNullOrEmpty(WebsiteUrl))
+        {
+            <a href="@WebsiteUrl" 
+               target="_blank" 
+               rel="noreferrer" 
+               class="mb-2 flex items-center gap-2 rounded-md border border-border bg-background p-2 hover:bg-muted transition-colors"
+               @onclick:stopPropagation="true">
+                <img src="@($"https://www.google.com/s2/favicons?sz=64&domain={Uri.EscapeDataString(new Uri(WebsiteUrl).Host)}")" 
+                     alt="favicon" 
+                     class="w-4 h-4 rounded-sm"
+                     onerror="this.style.display='none'" />
+                <svg class="w-3.5 h-3.5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                </svg>
+                <span class="text-xs text-foreground truncate">
+                    @(new Uri(WebsiteUrl).Host)
+                </span>
+            </a>
+        }
+
+        <!-- Completion indicator -->
+        @if (Card.IsComplete)
+        {
+            <div class="flex items-center gap-1 mb-2 text-green-600">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                </svg>
+                <span class="text-xs font-medium">Completed</span>
+            </div>
+        }
+
+        <!-- Labels -->
+        @if (Card.Labels.Any())
+        {
+            <div class="flex flex-wrap gap-1 mb-2">
+                @foreach (var label in Card.Labels)
+                {
+                    <span class="inline-block px-2 py-0.5 rounded-full text-white text-xs font-medium @label.Color">
+                        @label.Text
+                    </span>
+                }
+            </div>
+        }
+
+        <p class="text-foreground text-sm leading-relaxed @(Card.IsComplete ? "line-through" : "")">
+            @Card.Title
+        </p>
+
+        <!-- Card indicators -->
+        <div class="flex items-center gap-3 mt-2">
+            @if (!string.IsNullOrEmpty(Card.Description))
+            {
+                <svg class="w-3.5 h-3.5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+            }
+            @if (!string.IsNullOrEmpty(Card.ImageUrl))
+            {
+                <svg class="w-3.5 h-3.5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+            }
+            @if (string.IsNullOrEmpty(Card.ImageUrl) && !string.IsNullOrEmpty(WebsiteUrl))
+            {
+                <svg class="w-3.5 h-3.5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                </svg>
+            }
+            @if (!string.IsNullOrEmpty(Card.DueDate))
+            {
+                <div class="flex items-center gap-1 text-xs @(FormatDueDate(Card.DueDate) == "Overdue" ? "text-destructive" : "text-muted-foreground")">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                    <span>@FormatDueDate(Card.DueDate)</span>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@if (isModalOpen)
+{
+    <CardModal Card="@Card" 
+               ListTitle="@ListTitle" 
+               IsOpen="@isModalOpen" 
+               OnClose="@(() => isModalOpen = false)" 
+               OnUpdate="@OnUpdateCard" />
+}
+
+@code {
+    [Parameter] public Card Card { get; set; } = new();
+    [Parameter] public int Index { get; set; }
+    [Parameter] public string ListTitle { get; set; } = string.Empty;
+    [Parameter] public EventCallback<Card> OnUpdateCard { get; set; }
+
+    private bool isModalOpen = false;
+
+    private string? WebsiteUrl => GetFirstUrl(Card.Description) ?? GetFirstUrl(Card.Title);
+
+    private string? GetFirstUrl(string? text)
+    {
+        if (string.IsNullOrEmpty(text)) return null;
+        var urlRegex = new System.Text.RegularExpressions.Regex(@"(https?://[^\s]+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        var match = urlRegex.Match(text);
+        return match.Success ? match.Value : null;
+    }
+
+    private string FormatDueDate(string date)
+    {
+        if (!DateTime.TryParse(date, out var dueDate)) return string.Empty;
+        
+        var today = DateTime.Today;
+        var diffDays = (dueDate.Date - today).Days;
+        
+        if (diffDays < 0) return "Overdue";
+        if (diffDays == 0) return "Today";
+        if (diffDays == 1) return "Tomorrow";
+        return $"{diffDays} days";
+    }
+}

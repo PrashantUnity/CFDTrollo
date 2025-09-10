@@ -1,0 +1,78 @@
+@if (isAdding)
+{
+    <div class="mt-2">
+        <textarea @ref="inputRef"
+                  @bind="title"
+                  @onkeydown="HandleKeyDown"
+                  placeholder="Enter a title for this card..."
+                  class="w-full p-3 rounded-lg bg-card shadow-card resize-none text-foreground border-2 border-transparent focus:border-primary focus:outline-none placeholder:text-muted-foreground"
+                  rows="3">
+        </textarea>
+        <div class="flex gap-2 mt-2">
+            <button @onclick="HandleSubmit"
+                    class="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity font-medium">
+                Add card
+            </button>
+            <button @onclick="HandleCancel"
+                    class="p-2 hover:bg-muted rounded-md transition-colors">
+                <svg class="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+}
+else
+{
+    <button @onclick="@(() => isAdding = true)"
+            class="w-full mt-2 p-2 text-left rounded-lg hover:bg-muted/50 transition-colors group flex items-center gap-2 text-muted-foreground">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+        </svg>
+        <span class="text-sm font-medium">Add a card</span>
+    </button>
+}
+
+@code {
+    [Parameter] public EventCallback<string> OnAddCard { get; set; }
+
+    private bool isAdding = false;
+    private string title = string.Empty;
+    private ElementReference inputRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (isAdding && inputRef.Context != null)
+        {
+            await inputRef.FocusAsync();
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (!string.IsNullOrWhiteSpace(title))
+        {
+            await OnAddCard.InvokeAsync(title.Trim());
+            title = string.Empty;
+            isAdding = false;
+        }
+    }
+
+    private void HandleCancel()
+    {
+        title = string.Empty;
+        isAdding = false;
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            await HandleSubmit();
+        }
+        else if (e.Key == "Escape")
+        {
+            HandleCancel();
+        }
+    }
+}

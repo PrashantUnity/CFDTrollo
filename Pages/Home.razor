@@ -1,0 +1,229 @@
+﻿@page "/"
+@using CFDTrollo.Models
+@using CFDTrollo.Services
+@inject WorkspaceService WorkspaceService
+@inject NavigationManager Navigation
+
+<PageTitle>Workspaces</PageTitle>
+
+<div class="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header Section -->
+        <div class="mb-8">
+            <h1 class="text-4xl font-bold text-gray-900 mb-2">Workspaces</h1>
+            <p class="text-gray-600 mb-6">Choose a workspace to start organizing your projects</p>
+            
+            <!-- Create Workspace Button -->
+            <button @onclick="ShowCreateWorkspaceModal" 
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+                Create Workspace
+            </button>
+        </div>
+
+        <!-- All Workspaces Section -->
+        <div>
+            <h2 class="text-2xl font-semibold text-gray-900 mb-6">All Workspaces</h2>
+            
+            @if (workspaces == null)
+            {
+                <div class="flex justify-center items-center py-12">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+            }
+            else if (!workspaces.Any())
+            {
+                <div class="text-center py-12">
+                    <div class="text-gray-400 mb-4">
+                        <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-medium text-gray-900 mb-2">No workspaces yet</h3>
+                    <p class="text-gray-500 mb-4">Create your first workspace to get started</p>
+                    <button @onclick="ShowCreateWorkspaceModal" 
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200">
+                        Create Workspace
+                    </button>
+                </div>
+            }
+            else
+            {
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    @foreach (var workspace in workspaces)
+                    {
+                        <div @onclick="() => NavigateToWorkspace(workspace.Id)" 
+                             class="group workspace-card bg-card rounded-xl p-6 border border-border shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer">
+                            <div class="flex items-start justify-between mb-4">
+                                <div class="w-12 h-12 rounded-lg flex items-center justify-center" 
+                                     style="background-color: @workspace.Color">
+                                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"></path>
+                                    </svg>
+                                </div>
+                                <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button class="p-1 hover:bg-muted rounded transition-colors" title="Settings">
+                                        <svg class="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                        </svg>
+                                    </button>
+                                    <button class="p-1 hover:bg-muted rounded transition-colors" title="Star">
+                                        <svg class="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <h3 class="text-lg font-semibold text-foreground mb-2">@workspace.Name</h3>
+                            <p class="text-muted-foreground text-sm mb-4">@workspace.Description</p>
+                            <div class="flex items-center justify-between text-xs text-muted-foreground">
+                                <span>@workspace.CardCount cards</span>
+                                <span>@GetTimeAgo(workspace.LastModified)</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Create Workspace Modal -->
+@if (showCreateModal)
+{
+    <div class="fixed inset-0 bg-black bg-opacity-50 modal-backdrop flex items-center justify-center z-50" @onclick="HideCreateWorkspaceModal">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4" @onclick:stopPropagation="true">
+            <div class="p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Create New Workspace</h3>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Workspace Name</label>
+                        <input @bind="newWorkspaceName" 
+                               @onkeypress="@(async (e) => { if (e.Key == "Enter") await CreateWorkspace(); })"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                               placeholder="Enter workspace name" />
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Description (Optional)</label>
+                        <textarea @bind="newWorkspaceDescription" 
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                  rows="3"
+                                  placeholder="Enter workspace description"></textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Color</label>
+                        <div class="flex gap-2">
+                            @foreach (var color in workspaceColors)
+                            {
+                                <button @onclick="() => newWorkspaceColor = color" 
+                                        class="w-8 h-8 rounded-full border-2 @(newWorkspaceColor == color ? "border-gray-400" : "border-gray-200")"
+                                        style="background-color: @color"></button>
+                            }
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end gap-3 mt-6">
+                    <button @onclick="HideCreateWorkspaceModal" 
+                            class="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium">
+                        Cancel
+                    </button>
+                    <button @onclick="CreateWorkspace" 
+                            disabled="@(string.IsNullOrWhiteSpace(newWorkspaceName))"
+                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-lg font-medium transition-colors duration-200">
+                        Create
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<CFDTrollo.Models.Workspace>? workspaces;
+    private bool showCreateModal = false;
+    private string newWorkspaceName = "";
+    private string newWorkspaceDescription = "";
+    private string newWorkspaceColor = "#3B82F6";
+    
+    private readonly string[] workspaceColors = {
+        "#3B82F6", "#10B981", "#8B5CF6", "#EF4444", "#F59E0B", "#6366F1"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadWorkspaces();
+    }
+
+    private async Task LoadWorkspaces()
+    {
+        workspaces = await WorkspaceService.GetWorkspacesAsync();
+        StateHasChanged();
+    }
+
+    private void NavigateToWorkspace(string workspaceId)
+    {
+        Navigation.NavigateTo($"/workspace/{workspaceId}");
+    }
+
+    private void ShowCreateWorkspaceModal()
+    {
+        showCreateModal = true;
+        newWorkspaceName = "";
+        newWorkspaceDescription = "";
+        newWorkspaceColor = "#3B82F6";
+    }
+
+    private void HideCreateWorkspaceModal()
+    {
+        showCreateModal = false;
+    }
+
+    private async Task CreateWorkspace()
+    {
+        if (string.IsNullOrWhiteSpace(newWorkspaceName))
+            return;
+
+        try
+        {
+            await WorkspaceService.CreateWorkspaceAsync(newWorkspaceName, newWorkspaceDescription, newWorkspaceColor);
+            await LoadWorkspaces();
+            HideCreateWorkspaceModal();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error creating workspace: {ex.Message}");
+        }
+    }
+
+    private string GetTimeAgo(DateTime dateTime)
+    {
+        var timeSpan = DateTime.UtcNow - dateTime;
+        
+        if (timeSpan.TotalDays >= 1)
+        {
+            var days = (int)timeSpan.TotalDays;
+            return days == 1 ? "1 day ago" : $"{days} days ago";
+        }
+        else if (timeSpan.TotalHours >= 1)
+        {
+            var hours = (int)timeSpan.TotalHours;
+            return hours == 1 ? "1 hour ago" : $"{hours} hours ago";
+        }
+        else if (timeSpan.TotalMinutes >= 1)
+        {
+            var minutes = (int)timeSpan.TotalMinutes;
+            return minutes == 1 ? "1 minute ago" : $"{minutes} minutes ago";
+        }
+        else
+        {
+            return "Just now";
+        }
+    }
+}

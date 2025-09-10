@@ -1,0 +1,341 @@
+@using CFDTrollo.Models
+
+@if (IsOpen)
+{
+    <BaseModal OnClose="OnClose">
+        <div class="bg-gradient-to-r from-primary/5 to-accent/5 p-6 border-b border-border">
+            <div class="flex items-start justify-between">
+                <div class="flex-1">
+                    <div class="flex items-center gap-3 mb-3">
+                        <button @onclick="HandleCompletionToggle"
+                                class="flex items-center justify-center w-7 h-7 rounded-lg border-2 transition-all duration-200 @(editedCard.IsComplete ? "bg-green-500 border-green-500 shadow-sm" : "border-muted-foreground hover:border-primary hover:bg-primary/10")">
+                            @if (editedCard.IsComplete)
+                            {
+                                <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                                </svg>
+                            }
+                        </button>
+                        @if (isEditingTitle)
+                        {
+                            <input type="text"
+                                   @bind="editedCard.Title"
+                                   @onblur="HandleTitleSave"
+                                   @onkeydown="@(e => { if (e.Key == "Enter") HandleTitleSave(); if (e.Key == "Escape") CancelTitleEdit(); })"
+                                   class="text-2xl font-bold bg-transparent border-2 border-primary rounded-lg px-3 py-2 flex-1 focus:outline-none text-foreground @(editedCard.IsComplete ? "line-through opacity-60" : "")"
+                                   @ref="titleInputRef" 
+                                   autofocus />
+                        }
+                        else
+                        {
+                            <h2 class="text-2xl font-bold text-foreground cursor-pointer hover:bg-muted/50 rounded-lg px-3 py-2 -ml-3 flex-1 transition-colors @(editedCard.IsComplete ? "line-through opacity-60" : "")"
+                                @onclick="StartTitleEdit">
+                                @editedCard.Title
+                            </h2>
+                        }
+                    </div>
+                    <div class="flex items-center gap-4 text-sm text-muted-foreground">
+                        <span class="flex items-center gap-2">
+                            @if (editedCard.IsComplete)
+                            {
+                                <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                                <span>Completed</span>
+                            }
+                            else
+                            {
+                                <div class="w-2 h-2 bg-primary rounded-full"></div>
+                            }
+                            in list <span class="font-semibold text-foreground">@GetListName()</span>
+                        </span>
+                    </div>
+                </div>
+                <button @onclick="OnClose"
+                        class="p-2 hover:bg-muted rounded-lg transition-colors">
+                    <svg class="w-6 h-6 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 space-y-6">
+                    <!-- Description Section -->
+                    <div class="space-y-3">
+                        <h3 class="text-lg font-semibold text-foreground flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            Description
+                        </h3>
+                        <textarea @bind="editedCard.Description"
+                                  placeholder="Add a more detailed description..."
+                                  class="w-full px-4 py-3 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary min-h-[120px] transition-all hover:border-primary/50"
+                                  rows="4"></textarea>
+                    </div>
+
+                    <!-- Image Attachment Section -->
+                    <div class="space-y-3">
+                        <h3 class="text-lg font-semibold text-foreground flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                            Image Attachment
+                        </h3>
+                        @if (string.IsNullOrEmpty(editedCard.ImageUrl))
+                        {
+                            <div class="flex gap-3">
+                                <input type="url"
+                                       @bind="imageUrlInput"
+                                       @onkeydown="@(e => { if (e.Key == "Enter") HandleImageUrlAdd(); })"
+                                       placeholder="Enter image URL..."
+                                       class="flex-1 px-4 py-3 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all hover:border-primary/50" />
+                                <button @onclick="HandleImageUrlAdd"
+                                        class="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all font-medium shadow-sm hover:shadow-md">
+                                    Add Image
+                                </button>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="space-y-3">
+                                <img src="@editedCard.ImageUrl" alt="Card image" class="w-full h-48 object-cover rounded-lg border border-border" />
+                                <div class="flex gap-2">
+                                    <button @onclick="RemoveImage"
+                                            class="px-4 py-2 bg-destructive text-destructive-foreground rounded-lg hover:opacity-90 transition-all text-sm">
+                                        Remove Image
+                                    </button>
+                                    <button @onclick="ShowImageInput"
+                                            class="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:opacity-90 transition-all text-sm">
+                                        Change Image
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <!-- Card Color Section -->
+                    <div class="space-y-3">
+                        <h3 class="text-lg font-semibold text-foreground flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z"></path>
+                            </svg>
+                            Card Color
+                        </h3>
+                        <div class="relative">
+                            <button @onclick="ToggleBackgroundColorPicker"
+                                    class="w-full px-4 py-3 rounded-lg border border-border flex items-center gap-3 hover:bg-muted transition-all bg-card">
+                                <div class="w-6 h-6 rounded-lg border border-border @(editedCard.BackgroundColor ?? "bg-card")"></div>
+                                <span class="text-sm text-foreground font-medium">@(GetBackgroundColorName())</span>
+                            </button>
+                            @if (showBgColorPicker)
+                            {
+                                <div class="absolute top-full mt-2 p-4 bg-card border border-border rounded-lg shadow-lg z-10 w-full">
+                                    <div class="grid grid-cols-2 gap-3">
+                                        @foreach (var color in cardBackgroundColors)
+                                        {
+                                            <button @onclick="@(() => HandleBackgroundColorChange(color.Value))"
+                                                    class="p-3 rounded-lg border-2 transition-all @(editedCard.BackgroundColor == color.Value ? "border-primary ring-2 ring-primary/20" : "border-transparent hover:border-muted")">
+                                                <div class="w-full h-8 rounded @(color.Value ?? "bg-card border border-border")"></div>
+                                                <span class="text-xs text-muted-foreground mt-2 block text-center">@color.Name</span>
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Labels Section -->
+                    <div class="space-y-3">
+                        <h3 class="text-lg font-semibold text-foreground flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                            </svg>
+                            Labels
+                        </h3>
+                        <div class="flex flex-wrap gap-2">
+                            @foreach (var label in labelColors)
+                            {
+                                var isSelected = editedCard.Labels.Any(l => l.Color == label.Value);
+                                <button @onclick="@(() => HandleLabelToggle(label.Value, label.Name))"
+                                        class="px-4 py-2 rounded-lg text-white text-sm font-medium transition-all @label.Value @(isSelected ? "ring-2 ring-offset-2 ring-primary shadow-md" : "opacity-70 hover:opacity-100")">
+                                    @label.Name
+                                </button>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Due Date Section -->
+                    <div class="space-y-3">
+                        <h3 class="text-lg font-semibold text-foreground flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                            Due Date
+                        </h3>
+                        <input type="date" 
+                               value="@dueDateString"
+                               @onchange="@((ChangeEventArgs e) => dueDateString = e.Value?.ToString() ?? string.Empty)"
+                               class="w-full px-4 py-3 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all hover:border-primary/50" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </BaseModal>
+}
+
+@code {
+    [Parameter] public Card Card { get; set; } = default!;
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<Card> OnSave { get; set; }
+    [Parameter] public string ListName { get; set; } = "";
+
+    private Card editedCard = new();
+    private bool isEditingTitle = false;
+    private bool showBgColorPicker = false;
+    private string imageUrlInput = string.Empty;
+    private string dueDateString = string.Empty;
+    private ElementReference titleInputRef;
+
+    private readonly List<(string Name, string? Value)> cardBackgroundColors = new()
+    {
+        ("Default", null),
+        ("Red", "bg-red-500"),
+        ("Blue", "bg-blue-500"),
+        ("Green", "bg-green-500"),
+        ("Yellow", "bg-yellow-500"),
+        ("Purple", "bg-purple-500"),
+        ("Orange", "bg-orange-500")
+    };
+
+    private readonly List<(string Name, string Value)> labelColors = new()
+    {
+        ("Red", "bg-red-500"),
+        ("Blue", "bg-blue-500"),
+        ("Green", "bg-green-500"),
+        ("Yellow", "bg-yellow-500"),
+        ("Purple", "bg-purple-500"),
+        ("Orange", "bg-orange-500")
+    };
+
+    protected override void OnParametersSet()
+    {
+        if (IsOpen)
+        {
+            // Reset editing state when modal opens
+            isEditingTitle = false;
+            imageUrlInput = string.Empty;
+            showBgColorPicker = false;
+            
+            // Create a deep copy of the card for editing
+            editedCard = new Card
+            {
+                Id = Card.Id,
+                Title = Card.Title,
+                Description = Card.Description,
+                ImageUrl = Card.ImageUrl,
+                BackgroundColor = Card.BackgroundColor,
+                IsComplete = Card.IsComplete,
+                DueDate = Card.DueDate,
+                Labels = Card.Labels.ToList()
+            };
+            
+            // Set the date string for the input
+            dueDateString = editedCard.DueDate ?? string.Empty;
+        }
+    }
+
+    private async Task HandleCompletionToggle()
+    {
+        editedCard.IsComplete = !editedCard.IsComplete;
+        await SaveChanges();
+    }
+
+    private void StartTitleEdit()
+    {
+        isEditingTitle = true;
+    }
+
+    private async Task HandleTitleSave()
+    {
+        isEditingTitle = false;
+        await SaveChanges();
+    }
+
+    private void CancelTitleEdit()
+    {
+        isEditingTitle = false;
+        editedCard.Title = Card.Title;
+    }
+
+    private async Task HandleImageUrlAdd()
+    {
+        if (!string.IsNullOrWhiteSpace(imageUrlInput))
+        {
+            editedCard.ImageUrl = imageUrlInput.Trim();
+            imageUrlInput = string.Empty;
+            await SaveChanges();
+        }
+    }
+
+    private void ShowImageInput()
+    {
+        imageUrlInput = editedCard.ImageUrl ?? string.Empty;
+    }
+
+    private async Task RemoveImage()
+    {
+        editedCard.ImageUrl = null;
+        await SaveChanges();
+    }
+
+    private void ToggleBackgroundColorPicker()
+    {
+        showBgColorPicker = !showBgColorPicker;
+    }
+
+    private async Task HandleBackgroundColorChange(string color)
+    {
+        editedCard.BackgroundColor = color;
+        showBgColorPicker = false;
+        await SaveChanges();
+    }
+
+    private async Task HandleLabelToggle(string color, string name)
+    {
+        var existingLabel = editedCard.Labels.FirstOrDefault(l => l.Color == color);
+        if (existingLabel != null)
+        {
+            editedCard.Labels.Remove(existingLabel);
+        }
+        else
+        {
+            editedCard.Labels.Add(new Label { Color = color, Name = name });
+        }
+        await SaveChanges();
+    }
+
+    private async Task SaveChanges()
+    {
+        // Update the due date from the string
+        editedCard.DueDate = string.IsNullOrEmpty(dueDateString) ? null : dueDateString;
+        
+        await OnSave.InvokeAsync(editedCard);
+    }
+
+    private string GetBackgroundColorName()
+    {
+        var color = cardBackgroundColors.FirstOrDefault(c => c.Value == editedCard.BackgroundColor);
+        return color.Name;
+    }
+
+    private string GetListName()
+    {
+        return string.IsNullOrEmpty(ListName) ? "Unknown List" : ListName;
+    }
+}

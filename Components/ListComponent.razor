@@ -1,0 +1,38 @@
+@using CFDTrollo.Models
+@using CFDTrollo.Services
+@inject DragDropService DragDropService
+
+<div class="list-component bg-list rounded-lg p-3 w-72 flex-shrink-0 max-h-[calc(100vh-8rem)] flex flex-col border border-border shadow-card transition-all" 
+     data-list-id="@List.Id">
+    <div class="font-semibold text-foreground px-2 py-1 mb-2 cursor-grab active:cursor-grabbing select-none">
+        @List.Title
+    </div>
+    
+    <div id="@($"list-{List.Id}")" 
+         class="flex-1 min-h-[100px] max-h-[calc(100vh-12rem)] overflow-y-auto rounded-md transition-colors bg-transparent">
+        @foreach (var (card, index) in List.Cards.Select((card, index) => (card, index)))
+        {
+            <CardComponent Card="@card" 
+                          Index="@index" 
+                          ListTitle="@List.Title" 
+                          OnUpdateCard="@OnUpdateCard" />
+        }
+    </div>
+    
+    <AddCardComponent OnAddCard="@OnAddCard" />
+</div>
+
+@code {
+    [Parameter] public List List { get; set; } = new();
+    [Parameter] public int Index { get; set; }
+    [Parameter] public EventCallback<string> OnAddCard { get; set; }
+    [Parameter] public EventCallback<Card> OnUpdateCard { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await DragDropService.CreateSortableAsync($"list-{List.Id}", List.Id);
+        }
+    }
+}

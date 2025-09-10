@@ -1,0 +1,235 @@
+@using CFDTrollo.Models
+@using CFDTrollo.Data
+@using CFDTrollo.Services
+@inject LocalStorageService LocalStorage
+@inject IJSRuntime JSRuntime
+@inject DragDropService DragDropService
+@implements IDisposable
+
+<div class="min-h-screen bg-board">
+    <main class="p-6 md:p-8 overflow-x-auto">
+        <div id="board-lists" class="flex gap-4 md:gap-6 items-start min-h-[200px] pb-4 w-max">
+            @foreach (var (list, index) in boardState.Lists.Select((list, index) => (list, index)))
+            {
+                <ListComponent List="@list" 
+                               Index="@index" 
+                               OnAddCard="@((title) => HandleAddCard(list.Id, title))" 
+                               OnUpdateCard="@HandleUpdateCard" />
+            }
+        </div>
+    </main>
+    
+    <!-- Horizontal line at bottom -->
+    <div class="border-t border-border/50 mx-4"></div>
+
+    <!-- Floating Add List Button - Bottom Right -->
+    <button @onclick="HandleQuickAddList"
+            class="fixed bottom-6 right-6 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full p-4 shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center w-14 h-14 z-50"
+            title="Add New List">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+        </svg>
+    </button>
+</div>
+
+@code {
+    [Parameter] public string WorkspaceId { get; set; } = "default";
+    [Parameter] public EventCallback<int> OnCardCountChanged { get; set; }
+
+    private BoardState boardState = new();
+    private DotNetObjectReference<Board>? dotNetReference;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBoardState();
+        dotNetReference = DotNetObjectReference.Create(this);
+        await DragDropService.InitializeSortableAsync(dotNetReference);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await DragDropService.CreateListSortableAsync("board-lists");
+        }
+    }
+
+    private async Task LoadBoardState()
+    {
+        var storageKey = GetStorageKey(WorkspaceId);
+        var savedState = await LocalStorage.GetItem<BoardState>(storageKey);
+        
+        if (savedState != null && savedState.Lists.Any())
+        {
+            boardState = savedState;
+        }
+        else
+        {
+            boardState = InitialBoardState.GetInitialState();
+        }
+    }
+
+    private async Task SaveBoardState()
+    {
+        if (boardState.Lists.Any())
+        {
+            var storageKey = GetStorageKey(WorkspaceId);
+            await LocalStorage.SetItem(storageKey, boardState);
+            await NotifyCardCountChanged();
+        }
+    }
+
+    private async Task NotifyCardCountChanged()
+    {
+        var totalCards = boardState.Lists.Sum(list => list.Cards.Count);
+        await OnCardCountChanged.InvokeAsync(totalCards);
+    }
+
+    private string GetStorageKey(string workspaceId) => $"project-board-state-{workspaceId}";
+
+    private void HandleAddCard(string listId, string title)
+    {
+        var list = boardState.Lists.FirstOrDefault(l => l.Id == listId);
+        if (list != null)
+        {
+            var newCard = new Card
+            {
+                Id = $"card-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}",
+                Title = title
+            };
+            list.Cards.Add(newCard);
+            StateHasChanged();
+            _ = SaveBoardState();
+        }
+    }
+
+    private void HandleUpdateCard(Card updatedCard)
+    {
+        foreach (var list in boardState.Lists)
+        {
+            var cardIndex = list.Cards.FindIndex(c => c.Id == updatedCard.Id);
+            if (cardIndex >= 0)
+            {
+                list.Cards[cardIndex] = updatedCard;
+                break;
+            }
+        }
+        StateHasChanged();
+        _ = SaveBoardState();
+    }
+
+    private void HandleQuickAddList()
+    {
+        var newList = new List
+        {
+            Id = $"list-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}",
+            Title = $"New List {boardState.Lists.Count + 1}",
+            Cards = new List<Card>()
+        };
+
+        boardState.Lists.Add(newList);
+        StateHasChanged();
+        _ = SaveBoardState();
+    }
+
+    [JSInvokable]
+    public async Task HandleCardMove(object moveData)
+    {
+        try
+        {
+            var data = System.Text.Json.JsonSerializer.Deserialize<CardMoveData>(moveData.ToString()!);
+            if (data == null) return;
+
+            // Find source and target lists
+            var sourceList = boardState.Lists.FirstOrDefault(l => l.Id == data.SourceListId);
+            var targetList = boardState.Lists.FirstOrDefault(l => l.Id == data.TargetListId);
+
+            if (sourceList == null || targetList == null) return;
+
+            // Find the card to move
+            var card = sourceList.Cards.FirstOrDefault(c => c.Id == data.CardId);
+            if (card == null) return;
+
+            // Remove from source list
+            sourceList.Cards.Remove(card);
+
+            // Add to target list at the correct position
+            if (data.TargetIndex >= 0 && data.TargetIndex < targetList.Cards.Count)
+            {
+                targetList.Cards.Insert(data.TargetIndex, card);
+            }
+            else
+            {
+                targetList.Cards.Add(card);
+            }
+
+            StateHasChanged();
+            await SaveBoardState();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error handling card move: {ex.Message}");
+        }
+    }
+
+    [JSInvokable]
+    public async Task HandleCardReorder(object reorderData)
+    {
+        try
+        {
+            var data = System.Text.Json.JsonSerializer.Deserialize<CardReorderData>(reorderData.ToString()!);
+            if (data == null) return;
+
+            // Find the list
+            var list = boardState.Lists.FirstOrDefault(l => l.Id == data.ListId);
+            if (list == null) return;
+
+            // Reorder the cards
+            if (data.OldIndex >= 0 && data.OldIndex < list.Cards.Count &&
+                data.NewIndex >= 0 && data.NewIndex < list.Cards.Count)
+            {
+                var card = list.Cards[data.OldIndex];
+                list.Cards.RemoveAt(data.OldIndex);
+                list.Cards.Insert(data.NewIndex, card);
+
+                StateHasChanged();
+                await SaveBoardState();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error handling card reorder: {ex.Message}");
+        }
+    }
+
+    [JSInvokable]
+    public async Task HandleListReorder(object reorderData)
+    {
+        try
+        {
+            var data = System.Text.Json.JsonSerializer.Deserialize<ListReorderData>(reorderData.ToString()!);
+            if (data == null) return;
+
+            // Reorder the lists
+            if (data.OldIndex >= 0 && data.OldIndex < boardState.Lists.Count &&
+                data.NewIndex >= 0 && data.NewIndex < boardState.Lists.Count)
+            {
+                var list = boardState.Lists[data.OldIndex];
+                boardState.Lists.RemoveAt(data.OldIndex);
+                boardState.Lists.Insert(data.NewIndex, list);
+
+                StateHasChanged();
+                await SaveBoardState();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error handling list reorder: {ex.Message}");
+        }
+    }
+
+    public void Dispose()
+    {
+        dotNetReference?.Dispose();
+    }
+}
