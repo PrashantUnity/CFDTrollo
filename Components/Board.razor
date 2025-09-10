@@ -8,13 +8,15 @@
 
 <div class="min-h-screen bg-board">
     <main class="p-6 md:p-8 overflow-x-auto">
-        <div id="board-lists" class="flex gap-4 md:gap-6 items-start min-h-[200px] pb-4 w-max" @ref="boardListsElement">
+        <div id="board-lists" class="board-container flex gap-4 md:gap-6 items-start min-h-[200px] pb-4 w-max" @ref="boardListsElement" data-board-id="main-board">
             @foreach (var (list, index) in boardState.Lists.Select((list, index) => (list, index)))
             {
                 <ListComponent List="@list" 
                                Index="@index" 
                                OnAddCard="@((title) => HandleAddCard(list.Id, title))" 
-                               OnUpdateCard="@HandleUpdateCard" />
+                               OnUpdateCard="@HandleUpdateCard"
+                               OnDeleteList="@(() => HandleDeleteList(list.Id))"
+                               OnDeleteCard="@HandleDeleteCard" />
             }
         </div>
     </main>
@@ -28,6 +30,15 @@
             title="Add New List">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+        </svg>
+    </button>
+    
+    <!-- Test Button -->
+    <button @onclick="TestDragDrop"
+            class="fixed bottom-6 right-24 bg-green-600 hover:bg-green-700 text-white rounded-full p-4 shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center w-14 h-14 z-50"
+            title="Test Drag Drop">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
         </svg>
     </button>
 </div>
@@ -51,7 +62,8 @@
     {
         if (firstRender)
         {
-            await DragDropService.EnableListDropZoneAsync(boardListsElement);
+            // Enable list dragging on the board
+            await DragDropService.EnableListDraggingAsync(boardListsElement);
         }
     }
 
@@ -63,10 +75,12 @@
         if (savedState != null && savedState.Lists.Any())
         {
             boardState = savedState;
+            Console.WriteLine($"Board state loaded from localStorage with key: {storageKey}");
         }
         else
         {
             boardState = InitialBoardState.GetInitialState();
+            Console.WriteLine($"No saved state found, using initial state for key: {storageKey}");
         }
     }
 
@@ -77,6 +91,7 @@
             var storageKey = GetStorageKey(WorkspaceId);
             await LocalStorage.SetItem(storageKey, boardState);
             await NotifyCardCountChanged();
+            Console.WriteLine($"Board state saved to localStorage with key: {storageKey}");
         }
     }
 
@@ -133,13 +148,63 @@
         _ = SaveBoardState();
     }
 
+    private async Task HandleDeleteList(string listId)
+    {
+        var list = boardState.Lists.FirstOrDefault(l => l.Id == listId);
+        if (list == null) return;
+
+        // Show confirmation dialog
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", 
+            $"Are you sure you want to delete the list '{list.Title}'? This will also delete all {list.Cards.Count} cards in this list.");
+
+        if (confirmed)
+        {
+            boardState.Lists.Remove(list);
+            StateHasChanged();
+            await SaveBoardState();
+        }
+    }
+
+    private async Task HandleDeleteCard(string cardId)
+    {
+        // Find the card in all lists
+        Card? cardToDelete = null;
+        List? parentList = null;
+
+        foreach (var list in boardState.Lists)
+        {
+            var card = list.Cards.FirstOrDefault(c => c.Id == cardId);
+            if (card != null)
+            {
+                cardToDelete = card;
+                parentList = list;
+                break;
+            }
+        }
+
+        if (cardToDelete == null || parentList == null) return;
+
+        // Show confirmation dialog
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", 
+            $"Are you sure you want to delete the card '{cardToDelete.Title}'?");
+
+        if (confirmed)
+        {
+            parentList.Cards.Remove(cardToDelete);
+            StateHasChanged();
+            await SaveBoardState();
+        }
+    }
+
     [JSInvokable]
-    public async Task HandleCardDrop(string cardId, string sourceListTitle, string targetListId, int dropIndex)
+    public async Task HandleCardMove(string cardId, string sourceListId, string targetListId, int newIndex)
     {
         try
         {
+            Console.WriteLine($"🎯 HandleCardMove called: cardId={cardId}, sourceListId={sourceListId}, targetListId={targetListId}, newIndex={newIndex}");
+            
             // Find source and target lists
-            var sourceList = boardState.Lists.FirstOrDefault(l => l.Title == sourceListTitle);
+            var sourceList = boardState.Lists.FirstOrDefault(l => l.Id == sourceListId);
             var targetList = boardState.Lists.FirstOrDefault(l => l.Id == targetListId);
 
             if (sourceList == null || targetList == null) return;
@@ -152,9 +217,9 @@
             sourceList.Cards.Remove(card);
 
             // Add to target list at the correct position
-            if (dropIndex >= 0 && dropIndex < targetList.Cards.Count)
+            if (newIndex >= 0 && newIndex <= targetList.Cards.Count)
             {
-                targetList.Cards.Insert(dropIndex, card);
+                targetList.Cards.Insert(newIndex, card);
             }
             else
             {
@@ -166,40 +231,26 @@
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error handling card drop: {ex.Message}");
+            Console.WriteLine($"Error handling card move: {ex.Message}");
         }
     }
 
     [JSInvokable]
-    public async Task HandleListDrop(string listId, int dropIndex)
+    public async Task HandleCardReorder(string cardId, string listId, int oldIndex, int newIndex)
     {
         try
         {
-            // Find the list to move
+            Console.WriteLine($"🎯 HandleCardReorder called: cardId={cardId}, listId={listId}, oldIndex={oldIndex}, newIndex={newIndex}");
+            
             var list = boardState.Lists.FirstOrDefault(l => l.Id == listId);
             if (list == null) return;
 
-            // Get current index
-            var currentIndex = boardState.Lists.IndexOf(list);
-            if (currentIndex == -1) return;
-
-            // Remove from current position
-            boardState.Lists.RemoveAt(currentIndex);
-
-            // Adjust drop index if needed
-            if (currentIndex < dropIndex)
+            // Reorder within the same list
+            if (oldIndex >= 0 && oldIndex < list.Cards.Count && newIndex >= 0 && newIndex < list.Cards.Count)
             {
-                dropIndex--;
-            }
-
-            // Insert at new position
-            if (dropIndex >= 0 && dropIndex < boardState.Lists.Count)
-            {
-                boardState.Lists.Insert(dropIndex, list);
-            }
-            else
-            {
-                boardState.Lists.Add(list);
+                var card = list.Cards[oldIndex];
+                list.Cards.RemoveAt(oldIndex);
+                list.Cards.Insert(newIndex, card);
             }
 
             StateHasChanged();
@@ -207,7 +258,84 @@
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error handling list drop: {ex.Message}");
+            Console.WriteLine($"Error handling card reorder: {ex.Message}");
+        }
+    }
+
+    [JSInvokable]
+    public async Task HandleListReorder(string listId, int oldIndex, int newIndex)
+    {
+        try
+        {
+            Console.WriteLine($"🎯 HandleListReorder called: listId={listId}, oldIndex={oldIndex}, newIndex={newIndex}");
+            
+            // Reorder lists
+            if (oldIndex >= 0 && oldIndex < boardState.Lists.Count && newIndex >= 0 && newIndex < boardState.Lists.Count)
+            {
+                var list = boardState.Lists[oldIndex];
+                boardState.Lists.RemoveAt(oldIndex);
+                boardState.Lists.Insert(newIndex, list);
+            }
+
+            StateHasChanged();
+            await SaveBoardState();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error handling list reorder: {ex.Message}");
+        }
+    }
+
+    private async Task TestDragDrop()
+    {
+        Console.WriteLine("🧪 Testing drag drop...");
+        
+        try
+        {
+            // Test if dragDrop is available
+            var dragDropExists = await JSRuntime.InvokeAsync<bool>("eval", "typeof window.dragDrop !== 'undefined'");
+            Console.WriteLine($"🔍 dragDrop exists: {dragDropExists}");
+            
+            if (dragDropExists)
+            {
+                // Test the dragDrop object
+                var dragDropMethods = await JSRuntime.InvokeAsync<string>("eval", "Object.keys(window.dragDrop).join(', ')");
+                Console.WriteLine($"🔧 dragDrop methods: {dragDropMethods}");
+                
+                // Test the test function
+                await JSRuntime.InvokeVoidAsync("eval", "if (typeof window.testDragDrop === 'function') { window.testDragDrop(); } else { console.log('❌ testDragDrop function not found'); }");
+                
+                // Test initialization
+                await DragDropService.InitializeDragDropAsync(dotNetReference);
+                Console.WriteLine("✅ Drag drop test completed successfully");
+                
+                // Test enabling drag on first card
+                if (boardState.Lists.Any() && boardState.Lists.First().Cards.Any())
+                {
+                    var firstCard = boardState.Lists.First().Cards.First();
+                    Console.WriteLine($"🔧 Testing card drag for: {firstCard.Title}");
+                    
+                    // Find the card element and test dragging
+                    await JSRuntime.InvokeVoidAsync("eval", 
+                        "const cards = document.querySelectorAll('[data-card-id]');" +
+                        "if (cards.length > 0) {" +
+                        "  console.log('🔍 Found', cards.length, 'cards');" +
+                        "  const firstCard = cards[0];" +
+                        "  console.log('🔍 First card:', firstCard);" +
+                        "  console.log('🔍 First card draggable:', firstCard.draggable);" +
+                        "} else {" +
+                        "  console.log('❌ No cards found in DOM');" +
+                        "}");
+                }
+            }
+            else
+            {
+                Console.WriteLine("❌ dragDrop object not found");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Drag drop test failed: {ex.Message}");
         }
     }
 
