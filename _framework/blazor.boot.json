@@ -1,7 +1,7 @@
 {
   "mainAssemblyName": "CFDTrollo",
   "resources": {
-    "hash": "sha256-PYB67KRQXfsQfuAfVE9BAj/kIwFnkZAByvxeZRTU92M=",
+    "hash": "sha256-bvqtIhLYzpKTxg/f2SXFRZYcTAyhgzCMznJiuUAVQ6k=",
     "fingerprinting": {
       "Microsoft.AspNetCore.Components.0lnvcnhb7e.wasm": "Microsoft.AspNetCore.Components.wasm",
       "Microsoft.AspNetCore.Components.Web.8q5qvgok7k.wasm": "Microsoft.AspNetCore.Components.Web.wasm",
@@ -34,7 +34,7 @@
       "System.Text.Json.coj5dfj14h.wasm": "System.Text.Json.wasm",
       "System.Text.RegularExpressions.7kcncsk9id.wasm": "System.Text.RegularExpressions.wasm",
       "System.Private.CoreLib.tua7rjo7bc.wasm": "System.Private.CoreLib.wasm",
-      "CFDTrollo.4kr5k6la03.wasm": "CFDTrollo.wasm",
+      "CFDTrollo.leg2vkdtst.wasm": "CFDTrollo.wasm",
       "dotnet.js": "dotnet.js",
       "dotnet.native.9ih887ebfz.js": "dotnet.native.js",
       "dotnet.native.21mns4qp4i.wasm": "dotnet.native.wasm",
@@ -91,7 +91,7 @@
       "System.Text.Encodings.Web.08ymq1fvcr.wasm": "sha256-QPumUm/+bRPi/T+QpPMfrlCeezAnzRk6CmD/iBskgiw=",
       "System.Text.Json.coj5dfj14h.wasm": "sha256-JNTa+hz/l9OnEgXZlEjywRui9FvNkQdVcjQTuuprMuE=",
       "System.Text.RegularExpressions.7kcncsk9id.wasm": "sha256-V5vxOfUQOPs57OAC0QnYS7sDN5LoiV/Byw7IXD/G3DQ=",
-      "CFDTrollo.4kr5k6la03.wasm": "sha256-xFZbSz1asx0HiTCNiSyRGM1k+VPXtFrNCsomoWr3h+k="
+      "CFDTrollo.leg2vkdtst.wasm": "sha256-c+GdGEpXJozX7yNevCnKYLFnS9L2lCbd953pROv+4Eg="
     }
   },
   "cacheBootResources": true,
