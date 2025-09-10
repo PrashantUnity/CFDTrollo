@@ -4,32 +4,39 @@ window.dragDrop = {
         this.draggedElement = null;
         this.draggedData = null;
         this.dragOverElement = null;
+        this.dropZones = new Map();
     },
 
+    // Initialize card dragging
     handleCardDragStart: function (element, cardId, listTitle, cardIndex) {
-        this.draggedData = `${cardId}|${listTitle}|${cardIndex}`;
+        this.draggedData = {
+            cardId: cardId,
+            listTitle: listTitle,
+            cardIndex: cardIndex
+        };
         
-        // Add event listeners to the element
         element.addEventListener('dragstart', (event) => {
             this.draggedElement = event.target;
             event.dataTransfer.effectAllowed = 'move';
-            event.dataTransfer.setData('text/html', event.target.outerHTML);
+            event.dataTransfer.setData('text/plain', JSON.stringify(this.draggedData));
             
-            // Add smooth visual feedback
+            // Visual feedback
             event.target.style.opacity = '0.6';
+            event.target.style.transform = 'rotate(3deg) scale(1.05)';
             event.target.style.transition = 'all 0.2s ease';
             event.target.classList.add('dragging');
             
-            // Create a custom drag image
+            // Create custom drag image
             const dragImage = event.target.cloneNode(true);
             dragImage.style.opacity = '0.8';
             dragImage.style.position = 'absolute';
             dragImage.style.top = '-1000px';
             dragImage.style.pointerEvents = 'none';
+            dragImage.style.zIndex = '10000';
             document.body.appendChild(dragImage);
             event.dataTransfer.setDragImage(dragImage, 0, 0);
             
-            // Clean up the drag image after a short delay
+            // Clean up drag image
             setTimeout(() => {
                 if (document.body.contains(dragImage)) {
                     document.body.removeChild(dragImage);
@@ -41,6 +48,7 @@ window.dragDrop = {
             // Reset visual feedback
             if (this.draggedElement) {
                 this.draggedElement.style.opacity = '1';
+                this.draggedElement.style.transform = 'none';
                 this.draggedElement.classList.remove('dragging');
             }
             this.draggedElement = null;
@@ -48,31 +56,126 @@ window.dragDrop = {
         });
     },
 
-    handleCardDragOver: function (element) {
+    // Initialize list dragging
+    handleListDragStart: function (element, listId, listIndex) {
+        this.listDragData = {
+            listId: listId,
+            listIndex: listIndex
+        };
+        
+        element.addEventListener('dragstart', (event) => {
+            this.draggedElement = event.target;
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', JSON.stringify(this.listDragData));
+            
+            // Visual feedback
+            event.target.style.opacity = '0.8';
+            event.target.style.transform = 'rotate(2deg) scale(1.05)';
+            event.target.style.transition = 'all 0.2s ease';
+            event.target.classList.add('dragging');
+        });
+
+        element.addEventListener('dragend', (event) => {
+            // Reset visual feedback
+            if (this.draggedElement) {
+                this.draggedElement.style.opacity = '1';
+                this.draggedElement.style.transform = 'none';
+                this.draggedElement.classList.remove('dragging');
+            }
+            this.draggedElement = null;
+            this.listDragData = null;
+        });
+    },
+
+    // Initialize drop zone for cards
+    handleCardDropZone: function (element, listId) {
+        this.dropZones.set(listId, element);
+        
         element.addEventListener('dragover', (event) => {
             event.preventDefault();
             event.dataTransfer.dropEffect = 'move';
             
-            // Add visual feedback to drop zones
+            // Visual feedback
             element.classList.add('drag-over');
             this.dragOverElement = element;
-            
-            // Add smooth transition
-            element.style.transition = 'all 0.2s ease';
             
             // Show drop indicator
             this.showDropIndicator(element, event);
         });
+
+        element.addEventListener('dragleave', (event) => {
+            if (!element.contains(event.relatedTarget)) {
+                element.classList.remove('drag-over');
+                this.dragOverElement = null;
+                this.removeDropIndicator(element);
+            }
+        });
+
+        element.addEventListener('drop', (event) => {
+            event.preventDefault();
+            
+            // Remove visual feedback
+            element.classList.remove('drag-over');
+            this.dragOverElement = null;
+            this.removeDropIndicator(element);
+            
+            try {
+                const data = JSON.parse(event.dataTransfer.getData('text/plain'));
+                
+                if (data.cardId) {
+                    // Card drop
+                    const dropIndex = this.calculateDropIndex(element, event);
+                    this.dotNetReference.invokeMethodAsync('HandleCardDrop', data.cardId, data.listTitle, listId, dropIndex);
+                } else if (data.listId) {
+                    // List drop
+                    const dropIndex = this.calculateListDropIndex(element, event);
+                    this.dotNetReference.invokeMethodAsync('HandleListDrop', data.listId, dropIndex);
+                }
+            } catch (error) {
+                console.error('Error handling drop:', error);
+            }
+        });
     },
-    
+
+    // Initialize drop zone for lists
+    handleListDropZone: function (element) {
+        element.addEventListener('dragover', (event) => {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'move';
+            
+            // Visual feedback
+            element.classList.add('drag-over');
+        });
+
+        element.addEventListener('dragleave', (event) => {
+            if (!element.contains(event.relatedTarget)) {
+                element.classList.remove('drag-over');
+            }
+        });
+
+        element.addEventListener('drop', (event) => {
+            event.preventDefault();
+            
+            // Remove visual feedback
+            element.classList.remove('drag-over');
+            
+            try {
+                const data = JSON.parse(event.dataTransfer.getData('text/plain'));
+                
+                if (data.listId) {
+                    const dropIndex = this.calculateListDropIndex(element, event);
+                    this.dotNetReference.invokeMethodAsync('HandleListDrop', data.listId, dropIndex);
+                }
+            } catch (error) {
+                console.error('Error handling list drop:', error);
+            }
+        });
+    },
+
+    // Show drop indicator
     showDropIndicator: function (element, event) {
-        // Remove existing indicators
-        const existingIndicator = element.querySelector('.drop-indicator');
-        if (existingIndicator) {
-            existingIndicator.remove();
-        }
+        this.removeDropIndicator(element);
         
-        // Calculate position for drop indicator
         const rect = element.getBoundingClientRect();
         const y = event.clientY - rect.top;
         const cards = element.querySelectorAll('.card-component');
@@ -109,94 +212,123 @@ window.dragDrop = {
         }
     },
 
-    handleCardDragLeave: function (element) {
-        element.addEventListener('dragleave', (event) => {
-            // Only remove if we're actually leaving the element
-            if (!element.contains(event.relatedTarget)) {
-                element.classList.remove('drag-over');
-                this.dragOverElement = null;
-                
-                // Remove drop indicator
-                const indicator = element.querySelector('.drop-indicator');
-                if (indicator) {
-                    indicator.remove();
-                }
-            }
-        });
+    // Remove drop indicator
+    removeDropIndicator: function (element) {
+        const indicator = element.querySelector('.drop-indicator');
+        if (indicator) {
+            indicator.remove();
+        }
     },
 
-    handleCardDrop: function (element, targetListId) {
-        element.addEventListener('drop', (event) => {
-            event.preventDefault();
+    // Calculate drop index for cards
+    calculateDropIndex: function (element, event) {
+        const rect = element.getBoundingClientRect();
+        const y = event.clientY - rect.top;
+        const cards = element.querySelectorAll('.card-component');
+        
+        for (let i = 0; i < cards.length; i++) {
+            const cardRect = cards[i].getBoundingClientRect();
+            const cardTop = cardRect.top - rect.top;
+            const cardCenter = cardTop + (cardRect.height / 2);
             
-            // Remove visual feedback
-            element.classList.remove('drag-over');
-            this.dragOverElement = null;
-            
-            // Remove drop indicator
-            const indicator = element.querySelector('.drop-indicator');
-            if (indicator) {
-                indicator.remove();
+            if (y < cardCenter) {
+                return i;
             }
+        }
+        
+        return cards.length; // Default to end
+    },
+
+    // Calculate drop index for lists
+    calculateListDropIndex: function (element, event) {
+        const rect = element.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const lists = element.querySelectorAll('.list-component');
+        
+        for (let i = 0; i < lists.length; i++) {
+            const listRect = lists[i].getBoundingClientRect();
+            const listLeft = listRect.left - rect.left;
+            const listCenter = listLeft + (listRect.width / 2);
             
-            if (this.draggedData && this.dotNetReference) {
-                // Calculate drop position within the list more accurately
-                const rect = element.getBoundingClientRect();
-                const y = event.clientY - rect.top;
-                
-                // Get all card elements in the list
-                const cards = element.querySelectorAll('.card-component');
-                let dropIndex = cards.length; // Default to end
-                
-                // Find the correct position based on mouse Y position
-                for (let i = 0; i < cards.length; i++) {
-                    const cardRect = cards[i].getBoundingClientRect();
-                    const cardTop = cardRect.top - rect.top;
-                    const cardCenter = cardTop + (cardRect.height / 2);
-                    
-                    if (y < cardCenter) {
-                        dropIndex = i;
-                        break;
-                    }
-                }
-                
-                // Notify Blazor about the drop with position
-                this.dotNetReference.invokeMethodAsync('HandleCardDrop', this.draggedData, targetListId, dropIndex);
+            if (x < listCenter) {
+                return i;
             }
-        });
+        }
+        
+        return lists.length; // Default to end
+    },
+
+    // Enable dragging for an element
+    enableDragging: function (element, type, id, title, index) {
+        element.draggable = true;
+        
+        if (type === 'card') {
+            this.handleCardDragStart(element, id, title, index);
+        } else if (type === 'list') {
+            this.handleListDragStart(element, id, index);
+        }
+    },
+
+    // Enable drop zone for an element
+    enableDropZone: function (element, type, id) {
+        if (type === 'card') {
+            this.handleCardDropZone(element, id);
+        } else if (type === 'list') {
+            this.handleListDropZone(element);
+        }
     }
 };
 
-// Add CSS for drag over effects
+// Add CSS for drag and drop
 const style = document.createElement('style');
 style.textContent = `
+    .dragging {
+        opacity: 0.6;
+        transform: rotate(3deg) scale(1.05);
+        transition: all 0.2s ease;
+        z-index: 1000;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    }
+    
     .drag-over {
         background-color: rgba(59, 130, 246, 0.1) !important;
         border: 2px dashed #3b82f6 !important;
         box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
     }
     
-    .dragging {
-        opacity: 0.6;
-        transition: all 0.2s ease;
-        z-index: 1000;
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-    }
-    
     .card-component {
         transition: all 0.2s ease;
+        cursor: grab;
     }
     
     .card-component:hover {
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
     
-    .list-component {
-        transition: all 0.2s ease;
+    .card-component:active {
+        cursor: grabbing;
     }
     
-    .list-component.drag-over {
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+    .list-component {
+        transition: all 0.2s ease;
+        cursor: grab;
+    }
+    
+    .list-component:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .list-component:active {
+        cursor: grabbing;
+    }
+    
+    .drop-indicator {
+        height: 2px;
+        background: #3b82f6;
+        margin: 4px 0;
+        border-radius: 1px;
+        opacity: 0.8;
+        transition: all 0.2s ease;
     }
 `;
 document.head.appendChild(style);

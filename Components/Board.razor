@@ -8,7 +8,7 @@
 
 <div class="min-h-screen bg-board">
     <main class="p-6 md:p-8 overflow-x-auto">
-        <div id="board-lists" class="flex gap-4 md:gap-6 items-start min-h-[200px] pb-4 w-max">
+        <div id="board-lists" class="flex gap-4 md:gap-6 items-start min-h-[200px] pb-4 w-max" @ref="boardListsElement">
             @foreach (var (list, index) in boardState.Lists.Select((list, index) => (list, index)))
             {
                 <ListComponent List="@list" 
@@ -38,19 +38,20 @@
 
     private BoardState boardState = new();
     private DotNetObjectReference<Board>? dotNetReference;
+    private ElementReference boardListsElement;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadBoardState();
         dotNetReference = DotNetObjectReference.Create(this);
-        await DragDropService.InitializeSortableAsync(dotNetReference);
+        await DragDropService.InitializeDragDropAsync(dotNetReference);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            await DragDropService.CreateListSortableAsync("board-lists");
+            await DragDropService.EnableListDropZoneAsync(boardListsElement);
         }
     }
 
@@ -133,30 +134,27 @@
     }
 
     [JSInvokable]
-    public async Task HandleCardMove(object moveData)
+    public async Task HandleCardDrop(string cardId, string sourceListTitle, string targetListId, int dropIndex)
     {
         try
         {
-            var data = System.Text.Json.JsonSerializer.Deserialize<CardMoveData>(moveData.ToString()!);
-            if (data == null) return;
-
             // Find source and target lists
-            var sourceList = boardState.Lists.FirstOrDefault(l => l.Id == data.SourceListId);
-            var targetList = boardState.Lists.FirstOrDefault(l => l.Id == data.TargetListId);
+            var sourceList = boardState.Lists.FirstOrDefault(l => l.Title == sourceListTitle);
+            var targetList = boardState.Lists.FirstOrDefault(l => l.Id == targetListId);
 
             if (sourceList == null || targetList == null) return;
 
             // Find the card to move
-            var card = sourceList.Cards.FirstOrDefault(c => c.Id == data.CardId);
+            var card = sourceList.Cards.FirstOrDefault(c => c.Id == cardId);
             if (card == null) return;
 
             // Remove from source list
             sourceList.Cards.Remove(card);
 
             // Add to target list at the correct position
-            if (data.TargetIndex >= 0 && data.TargetIndex < targetList.Cards.Count)
+            if (dropIndex >= 0 && dropIndex < targetList.Cards.Count)
             {
-                targetList.Cards.Insert(data.TargetIndex, card);
+                targetList.Cards.Insert(dropIndex, card);
             }
             else
             {
@@ -168,63 +166,48 @@
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error handling card move: {ex.Message}");
+            Console.WriteLine($"Error handling card drop: {ex.Message}");
         }
     }
 
     [JSInvokable]
-    public async Task HandleCardReorder(object reorderData)
+    public async Task HandleListDrop(string listId, int dropIndex)
     {
         try
         {
-            var data = System.Text.Json.JsonSerializer.Deserialize<CardReorderData>(reorderData.ToString()!);
-            if (data == null) return;
-
-            // Find the list
-            var list = boardState.Lists.FirstOrDefault(l => l.Id == data.ListId);
+            // Find the list to move
+            var list = boardState.Lists.FirstOrDefault(l => l.Id == listId);
             if (list == null) return;
 
-            // Reorder the cards
-            if (data.OldIndex >= 0 && data.OldIndex < list.Cards.Count &&
-                data.NewIndex >= 0 && data.NewIndex < list.Cards.Count)
-            {
-                var card = list.Cards[data.OldIndex];
-                list.Cards.RemoveAt(data.OldIndex);
-                list.Cards.Insert(data.NewIndex, card);
+            // Get current index
+            var currentIndex = boardState.Lists.IndexOf(list);
+            if (currentIndex == -1) return;
 
-                StateHasChanged();
-                await SaveBoardState();
+            // Remove from current position
+            boardState.Lists.RemoveAt(currentIndex);
+
+            // Adjust drop index if needed
+            if (currentIndex < dropIndex)
+            {
+                dropIndex--;
             }
+
+            // Insert at new position
+            if (dropIndex >= 0 && dropIndex < boardState.Lists.Count)
+            {
+                boardState.Lists.Insert(dropIndex, list);
+            }
+            else
+            {
+                boardState.Lists.Add(list);
+            }
+
+            StateHasChanged();
+            await SaveBoardState();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error handling card reorder: {ex.Message}");
-        }
-    }
-
-    [JSInvokable]
-    public async Task HandleListReorder(object reorderData)
-    {
-        try
-        {
-            var data = System.Text.Json.JsonSerializer.Deserialize<ListReorderData>(reorderData.ToString()!);
-            if (data == null) return;
-
-            // Reorder the lists
-            if (data.OldIndex >= 0 && data.OldIndex < boardState.Lists.Count &&
-                data.NewIndex >= 0 && data.NewIndex < boardState.Lists.Count)
-            {
-                var list = boardState.Lists[data.OldIndex];
-                boardState.Lists.RemoveAt(data.OldIndex);
-                boardState.Lists.Insert(data.NewIndex, list);
-
-                StateHasChanged();
-                await SaveBoardState();
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error handling list reorder: {ex.Message}");
+            Console.WriteLine($"Error handling list drop: {ex.Message}");
         }
     }
 

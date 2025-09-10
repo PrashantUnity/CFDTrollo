@@ -1,4 +1,5 @@
 using Microsoft.JSInterop;
+using Microsoft.AspNetCore.Components;
 
 namespace CFDTrollo.Services;
 
@@ -11,33 +12,28 @@ public class DragDropService
         _jsRuntime = jsRuntime;
     }
 
-    public async Task InitializeSortableAsync<T>(DotNetObjectReference<T> dotNetReference) where T : class
+    public async Task InitializeDragDropAsync<T>(DotNetObjectReference<T> dotNetReference) where T : class
     {
-        await _jsRuntime.InvokeVoidAsync("sortableManager.init", dotNetReference);
+        await _jsRuntime.InvokeVoidAsync("dragDrop.init", dotNetReference);
     }
 
-    public async Task CreateSortableAsync(string elementId, string listId)
+    public async Task EnableCardDraggingAsync(ElementReference element, string cardId, string listTitle, int cardIndex)
     {
-        await _jsRuntime.InvokeVoidAsync("sortableManager.createSortable", elementId, listId);
+        await _jsRuntime.InvokeVoidAsync("dragDrop.enableDragging", element, "card", cardId, listTitle, cardIndex);
     }
 
-    public async Task CreateListSortableAsync(string elementId)
+    public async Task EnableListDraggingAsync(ElementReference element, string listId, int listIndex)
     {
-        await _jsRuntime.InvokeVoidAsync("sortableManager.createListSortable", elementId);
+        await _jsRuntime.InvokeVoidAsync("dragDrop.enableDragging", element, "list", listId, "", listIndex);
     }
 
-    public async Task DestroySortableAsync(string elementId)
+    public async Task EnableCardDropZoneAsync(ElementReference element, string listId)
     {
-        await _jsRuntime.InvokeVoidAsync("sortableManager.destroySortable", elementId);
+        await _jsRuntime.InvokeVoidAsync("dragDrop.enableDropZone", element, "card", listId);
     }
 
-    public async Task RefreshSortableAsync(string elementId)
+    public async Task EnableListDropZoneAsync(ElementReference element)
     {
-        await _jsRuntime.InvokeVoidAsync("sortableManager.refreshSortable", elementId);
-    }
-
-    public async Task SetSortableEnabledAsync(string elementId, bool enabled)
-    {
-        await _jsRuntime.InvokeVoidAsync("sortableManager.setSortableEnabled", elementId, enabled);
+        await _jsRuntime.InvokeVoidAsync("dragDrop.enableDropZone", element, "list", "");
     }
 }

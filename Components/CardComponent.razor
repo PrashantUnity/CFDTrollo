@@ -1,7 +1,11 @@
 @using CFDTrollo.Models
+@using CFDTrollo.Services
+@inject DragDropService DragDropService
 
 <div class="card-component rounded-lg mb-2 shadow-card transition-all duration-200 hover:shadow-hover group @(Card.BackgroundColor ?? "bg-card") @(Card.IsComplete ? "opacity-75" : "")"
-     data-card-id="@Card.Id">
+     data-card-id="@Card.Id"
+     @ref="cardElement"
+     draggable="true">
     
     <!-- Drag Handle -->
     <div class="flex items-center justify-between p-3 pb-2 cursor-grab active:cursor-grabbing">
@@ -128,6 +132,15 @@
     [Parameter] public EventCallback<Card> OnUpdateCard { get; set; }
 
     private bool isModalOpen = false;
+    private ElementReference cardElement;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await DragDropService.EnableCardDraggingAsync(cardElement, Card.Id, ListTitle, Index);
+        }
+    }
 
     private string? WebsiteUrl => GetFirstUrl(Card.Description) ?? GetFirstUrl(Card.Title);
 
