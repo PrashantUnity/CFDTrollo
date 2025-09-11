@@ -56,7 +56,7 @@ public partial class Home : ComponentBase
 
     private void NavigateToWorkspace(string workspaceId)
     {
-        Navigation.NavigateTo($"/workspace/{workspaceId}");
+        Navigation.NavigateTo($"workspace/{workspaceId}");
     }
 
     private void ShowCreateWorkspaceModal()
